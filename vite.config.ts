@@ -1,13 +1,13 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, type Plugin} from 'vite';
 
 export default defineConfig(({command, mode}) => {
   const isWidgetBuild = command === 'build' && mode === 'widget';
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), ...(isWidgetBuild ? [inlineWidgetCss()] : [])],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
