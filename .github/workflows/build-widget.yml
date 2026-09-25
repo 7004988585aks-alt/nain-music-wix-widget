@@ -30,6 +30,13 @@ jobs:
             ls -lah
           fi
 
+      - name: Diagnose widget output before validation
+        run: |
+          pwd
+          ls -lah dist-widget
+          test -f dist-widget/nain-music-widget.js && echo "JS EXISTS" || echo "JS MISSING"
+          wc -c dist-widget/nain-music-widget.js
+
       - name: Verify single self-contained JS bundle
         run: |
           test -s dist-widget/nain-music-widget.js
