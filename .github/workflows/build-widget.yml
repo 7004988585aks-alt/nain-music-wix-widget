@@ -21,6 +21,15 @@ jobs:
       - name: Build widget
         run: bun run build:widget
 
+      - name: Diagnose widget output
+        run: |
+          find dist-widget -maxdepth 2 -type f -print || true
+          ls -lah dist-widget || true
+          if [ ! -d dist-widget ]; then
+            echo "dist-widget does not exist; workspace root:"
+            ls -lah
+          fi
+
       - name: Verify single self-contained JS bundle
         run: |
           test -s dist-widget/nain-music-widget.js
