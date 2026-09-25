@@ -7,7 +7,7 @@ export default defineConfig(({command, mode}) => {
   const isWidgetBuild = command === 'build' && mode === 'widget';
 
   return {
-    plugins: [react(), tailwindcss(), ...(isWidgetBuild ? [inlineWidgetCss()] : [])],
+    plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
