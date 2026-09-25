@@ -62,3 +62,15 @@ jobs:
           name: nain-music-widget
           path: dist-widget/nain-music-widget.js
           if-no-files-found: error
+      - name: Publish widget bundle to repository
+        run: |
+          cp dist-widget/nain-music-widget.js nain-music-widget.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nain-music-widget.js
+          if git diff --cached --quiet -- nain-music-widget.js; then
+            echo "Generated widget bundle is unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: publish widget bundle [skip ci]"
+          git push origin HEAD:main
