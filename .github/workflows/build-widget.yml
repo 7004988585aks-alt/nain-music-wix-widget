@@ -3,54 +3,32 @@ name: Build Nain Music Wix Widget
 on:
   push:
     branches: [main]
-    paths:
-      - 'nain-music-wix-widget-ready-fixed-source.zip'
-      - '.github/workflows/build-widget.yml'
   workflow_dispatch:
 
 jobs:
   build-widget:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source repository
-        uses: actions/checkout@v4
-
-      - name: Verify source archive
-        run: |
-          test -f nain-music-wix-widget-ready-fixed-source.zip
-          unzip -l nain-music-wix-widget-ready-fixed-source.zip | head -40
-
-      - name: Extract source archive
-        run: |
-          rm -rf source
-          mkdir source
-          unzip -q nain-music-wix-widget-ready-fixed-source.zip -d source
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: source/package.json
-
       - name: Install dependencies
-        working-directory: source
         run: npm install
-
       - name: Build widget
-        working-directory: source
         run: npm run build:widget
-
-      - name: Verify widget artifact
-        working-directory: source
+      - name: Verify single self-contained JS bundle
         run: |
           test -s dist-widget/nain-music-widget.js
+          test "$(find dist-widget -type f | wc -l)" -eq 1
+          test "$(find dist-widget -type f -name '*.js' | wc -l)" -eq 1
+          test "$(find dist-widget -type f -name '*.css' | wc -l)" -eq 0
+          grep -q "customElements" dist-widget/nain-music-widget.js
+          if grep -Eq 'import[[:space:]]*\(|from[[:space:]]+["'"'"']|\.css(["'"''])?' dist-widget/nain-music-widget.js; then exit 1; fi
           wc -c dist-widget/nain-music-widget.js
-
-      - name: Upload widget artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: nain-music-widget
-          path: source/dist-widget/nain-music-widget.js
+          path: dist-widget/nain-music-widget.js
           if-no-files-found: error
