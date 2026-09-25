@@ -1,0 +1,6 @@
+{
+  "name": "Nain Music Universal Gig Creation",
+  "description": "Seller-side Universal Gig Creation system with completed order ratings and reviews, and 24/7 bilingual (Hindi & English) AI Help & Support assistant for Nain Music marketplace.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

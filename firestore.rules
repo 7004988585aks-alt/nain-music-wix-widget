@@ -1,0 +1,193 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // 0. GLOBAL SAFETY NET & SECURITY HELPERS
+    // =========================================================================
+
+    // Global default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // =========================================================================
+    // 1. VALIDATION HELPERS (ANTI-UPDATE-GAP)
+    // =========================================================================
+
+    function isValidUser(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        (!('username' in data) || (data.username is string && data.username.size() <= 50)) &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 150)) &&
+        (!('avatar_url' in data) || (data.avatar_url is string && data.avatar_url.size() <= 500)) &&
+        (!('role' in data) || (data.role in ['buyer', 'seller', 'admin']));
+    }
+
+    function isValidBuyerProfile(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.user_id is string && isValidId(data.user_id) &&
+        (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+        (!('username' in data) || (data.username is string && data.username.size() <= 50)) &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 150)) &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 1000)) &&
+        (!('country' in data) || (data.country is string && data.country.size() <= 100)) &&
+        (!('city' in data) || (data.city is string && data.city.size() <= 100));
+    }
+
+    function isValidSellerProfile(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.user_id is string && isValidId(data.user_id) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        (!('headline' in data) || (data.headline is string && data.headline.size() <= 200)) &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 2000)) &&
+        (!('rating' in data) || (data.rating is number)) &&
+        (!('reviews_count' in data) || (data.reviews_count is number));
+    }
+
+    function isValidGig(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.seller_id is string && isValidId(data.seller_id) &&
+        data.service_id is string && data.service_id.size() > 0 && data.service_id.size() <= 100 &&
+        data.service_title is string && data.service_title.size() > 0 && data.service_title.size() <= 200 &&
+        data.status is string && (data.status in ['draft', 'published', 'paused', 'pending_review']) &&
+        (!('category' in data) || (data.category is string && data.category.size() <= 100)) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 10000));
+    }
+
+    function isValidGigPackage(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.gig_id is string && isValidId(data.gig_id) &&
+        data.package_type is string && (data.package_type in ['basic', 'standard', 'premium']) &&
+        data.price_inr is number && data.price_inr >= 0 &&
+        data.delivery_days is number && data.delivery_days >= 1 &&
+        (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 1000));
+    }
+
+    // =========================================================================
+    // 2. USERS COLLECTION
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (
+        (isSignedIn() && request.auth.uid == userId) ||
+        (resource.data.role == 'seller')
+      );
+      allow list: if isSignedIn() && (
+        resource.data.id == request.auth.uid ||
+        resource.data.role == 'seller'
+      );
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) &&
+        incoming().id == userId && isValidUser(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) &&
+        incoming().id == existing().id && isValidUser(incoming());
+      allow delete: if false; // User accounts are not deleted client-side
+    }
+
+    // =========================================================================
+    // 3. BUYER PROFILES (STRICTLY PRIVATE TO AUTHENTICATED BUYER)
+    // =========================================================================
+    match /buyerProfiles/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow list: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) &&
+        incoming().user_id == request.auth.uid && isValidBuyerProfile(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) &&
+        incoming().user_id == existing().user_id && isValidBuyerProfile(incoming());
+      allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+    }
+
+    // =========================================================================
+    // 4. SELLER PROFILES (PUBLIC DISCOVERY + STRICT OWNER WRITES)
+    // =========================================================================
+    match /sellerProfiles/{sellerId} {
+      allow get: if isValidId(sellerId);
+      allow list: if true;
+      allow create: if isSignedIn() && request.auth.uid == sellerId && isValidId(sellerId) &&
+        incoming().user_id == request.auth.uid && isValidSellerProfile(incoming());
+      allow update: if isSignedIn() && request.auth.uid == sellerId && isValidId(sellerId) &&
+        incoming().user_id == existing().user_id && isValidSellerProfile(incoming());
+      allow delete: if isSignedIn() && request.auth.uid == sellerId && isValidId(sellerId);
+    }
+
+    // =========================================================================
+    // 5. GIGS COLLECTION (MARKETPLACE DISCOVERY + SELLER ISOLATION)
+    // =========================================================================
+    match /gigs/{gigId} {
+      // Publicly viewable if published; otherwise only visible to the owner seller
+      allow get: if isValidId(gigId) && (
+        resource.data.status == 'published' ||
+        (isSignedIn() && resource.data.seller_id == request.auth.uid)
+      );
+      allow list: if resource.data.status == 'published' ||
+        (isSignedIn() && resource.data.seller_id == request.auth.uid);
+
+      // Only authenticated seller can create, bound to their own UID
+      allow create: if isSignedIn() && isValidId(gigId) &&
+        incoming().seller_id == request.auth.uid &&
+        isValidGig(incoming());
+
+      // Only the owning seller can update their gig; cannot transfer ownership
+      allow update: if isSignedIn() && isValidId(gigId) &&
+        existing().seller_id == request.auth.uid &&
+        incoming().seller_id == existing().seller_id &&
+        isValidGig(incoming());
+
+      // Only the owning seller can delete
+      allow delete: if isSignedIn() && isValidId(gigId) &&
+        existing().seller_id == request.auth.uid;
+    }
+
+    // =========================================================================
+    // 6. GIG PACKAGES (BOUND DIRECTLY TO PARENT GIG OWNERSHIP)
+    // =========================================================================
+    match /gigPackages/{packageId} {
+      allow get: if isValidId(packageId) && (
+        !exists(/databases/$(database)/documents/gigs/$(resource.data.gig_id)) ||
+        get(/databases/$(database)/documents/gigs/$(resource.data.gig_id)).data.status == 'published' ||
+        (isSignedIn() && get(/databases/$(database)/documents/gigs/$(resource.data.gig_id)).data.seller_id == request.auth.uid)
+      );
+      allow list: if !exists(/databases/$(database)/documents/gigs/$(resource.data.gig_id)) ||
+        get(/databases/$(database)/documents/gigs/$(resource.data.gig_id)).data.status == 'published' ||
+        (isSignedIn() && get(/databases/$(database)/documents/gigs/$(resource.data.gig_id)).data.seller_id == request.auth.uid);
+
+      allow create: if isSignedIn() && isValidId(packageId) &&
+        isValidId(incoming().gig_id) &&
+        exists(/databases/$(database)/documents/gigs/$(incoming().gig_id)) &&
+        get(/databases/$(database)/documents/gigs/$(incoming().gig_id)).data.seller_id == request.auth.uid &&
+        isValidGigPackage(incoming());
+
+      allow update: if isSignedIn() && isValidId(packageId) &&
+        exists(/databases/$(database)/documents/gigs/$(existing().gig_id)) &&
+        get(/databases/$(database)/documents/gigs/$(existing().gig_id)).data.seller_id == request.auth.uid &&
+        incoming().gig_id == existing().gig_id &&
+        isValidGigPackage(incoming());
+
+      allow delete: if isSignedIn() && isValidId(packageId) &&
+        exists(/databases/$(database)/documents/gigs/$(existing().gig_id)) &&
+        get(/databases/$(database)/documents/gigs/$(existing().gig_id)).data.seller_id == request.auth.uid;
+    }
+
+    // System probe path
+    match /system/{probeId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
