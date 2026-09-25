@@ -10,14 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-      - name: Install dependencies
-        run: npm install
+          bun-version: latest
+
+      - name: Install dependencies from lockfile
+        run: bun install --frozen-lockfile
+
       - name: Build widget
-        run: npm run build:widget
+        run: bun run build:widget
+
       - name: Verify single self-contained JS bundle
         run: |
           test -s dist-widget/nain-music-widget.js
@@ -27,7 +30,9 @@ jobs:
           grep -q "customElements" dist-widget/nain-music-widget.js
           if grep -Eq 'import[[:space:]]*\(|from[[:space:]]+["'"'"']|\.css(["'"''])?' dist-widget/nain-music-widget.js; then exit 1; fi
           wc -c dist-widget/nain-music-widget.js
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload widget artifact
+        uses: actions/upload-artifact@v4
         with:
           name: nain-music-widget
           path: dist-widget/nain-music-widget.js
