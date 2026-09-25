@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@layer base {
+  *, ::before, ::after {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: #0f172a;
+    background-color: #f8fafc;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: #0f172a;
+    background-color: #f8fafc;
+    letter-spacing: -0.01em;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #0f172a;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  code, kbd, samp, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  }
+
+  input, textarea, select {
+    font-family: inherit;
+    color: #0f172a;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #64748b !important;
+  }
+}
+
+/* Global text legibility and contrast enhancements */
+
+/* Enhance washed-out slate colors in light containers */
+.text-slate-400 {
+  color: #475569; /* Upgrade light-gray to crisp high-contrast slate (5.7:1 contrast ratio) */
+}
+
+.text-slate-500 {
+  color: #334155; /* Sharp readable slate */
+}
+
+.text-slate-600 {
+  color: #1e293b; /* Deep slate for clear secondary reading */
+}
+
+/* Ensure high contrast in dark containers (Order Workspace, Chat, etc.) */
+.bg-slate-900 .text-slate-400,
+.bg-slate-950 .text-slate-400,
+.bg-slate-800 .text-slate-400,
+.bg-black .text-slate-400 {
+  color: #cbd5e1 !important; /* Bright slate-300 for dark backgrounds */
+}
+
+.bg-slate-900 .text-slate-500,
+.bg-slate-950 .text-slate-500,
+.bg-slate-800 .text-slate-500,
+.bg-black .text-slate-500 {
+  color: #94a3b8 !important; /* Crisp slate-400 for dark backgrounds */
+}
+
+.bg-slate-900 .text-slate-300,
+.bg-slate-950 .text-slate-300 {
+  color: #f1f5f9 !important;
+}
+
+/* Elevate tiny sub-pixel font sizes to clear, readable standards */
+.text-\[9px\] {
+  font-size: 0.6875rem !important; /* 11px */
+  line-height: 1rem !important;
+  font-weight: 600 !important;
+}
+
+.text-\[10px\] {
+  font-size: 0.75rem !important; /* 12px */
+  line-height: 1.125rem !important;
+  font-weight: 500;
+}
+
+.text-\[11px\] {
+  font-size: 0.75rem !important; /* 12px */
+  line-height: 1.125rem !important;
+}
+
+.text-xs {
+  font-size: 0.8125rem !important; /* 13px */
+  line-height: 1.25rem !important;
+}
