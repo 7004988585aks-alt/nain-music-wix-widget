@@ -1,7 +1,7 @@
 import React from 'react';
 import {createRoot, type Root} from 'react-dom/client';
-import App from '../App.tsx';
-import '../index.css';
+import App from './App.tsx';
+import './index.css';
 
 const ELEMENT_NAME = 'nain-music-app';
 
